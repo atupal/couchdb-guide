@@ -1,4 +1,4 @@
-<title>Design Documents</title>
+<title>设计文档</title>
 
 <meta charset="utf-8">
 
@@ -10,55 +10,82 @@
 
 <script src="../../../script.js"></script>
 
-<h2 id="design">Design Documents</h2>
+<h2 id="design">设计文档</h2>
 
-<p><em>Design documents</em> are a special type of CouchDB document that contains application code. Because it runs inside a database, the application API is highly structured. We’ve seen JavaScript views and other functions in the previous chapters. In this section, we’ll take a look at the function APIs, and talk about how functions in a design document are related within applications.
+<p><em>设计文档</em> 是包含有应用代码的一种特殊 CouchDB 文档。因为代码在数据库里运行，所以应用 API 是高度结构化的。
+我们在前面的章节里看过了 JavaScript 写的视图函数和其他函数。
+在这一节里，我们将会看一下函数 API，然后讨论设计文档中的函数是如何关联到应用的。
 
-<p>This part (<a href="index.html#part/ii">Part II, “Developing with CouchDB”</a>, Chapters <a href="design.html">Chapter 5, Design Documents</a> through <a href="transforming.html">Chapter 9, Transforming Views with List Functions</a>) lays the foundation for <a href="index.html#part/iii">Part III, “Example Application”</a>, where we take what we’ve learned and build a small blog application to further develop an understanding of how CouchDB applications are built. The application is called Sofa, and on a few occasions we discuss it this part. If you are unclear on what we are referring to, do not worry, we’ll get to it in <a href="index.html#part/iii">Part III, “Example Application”</a>.
+<p>这部分(<a href="index.html#part/ii">第二部分, “CouchDB 开发”</a>, 从<a href="design.html">第 5 章, 设计文档</a>
+到 <a href="transforming.html">第 9 章, 使用列表函数转换视图</a>) 为 <a href="index.html#part/iii">
+第三部分, “示例应用”</a>奠基, 我们将会学习构建一个小型的博客应用来更好地理解开发 CouchDB 应用的流程。
+应用的名字叫 Sofa, 在这部分里我们会不时地提到它。如果你还不清楚我们说的是什么，不要担心，我们会在<a href="index.html#part/iii">第三部分, “示例应用”</a>中具体讲解。
 
-<h3 id="modeling">Document Modeling</h3>
+<h3 id="modeling">文档模型</h3>
 
-<p>In our experience, there are two main kinds of documents. The first kind is like something a word processor would save, or a user profile. With that sort of data, you want to denormalize as much as you possibly can. Basically, you want to be able to load the document in one request and get something that makes sense enough to display.
+<p>从我们的经验来看，有两种文档。一种是类似在文字处理器里保存的的东西或者是用户配置信息。
+对于这种数据，我们希望尽可能地反规范化。通常，你会想要在一个请求里加载这些文档，然后获取一些足够用来展示的东西。
 
-<p>A technique exists for creating “virtual” documents by using views to collate data together. You could use this to store each attribute of your user profiles in a different document, but I wouldn’t recommend it. Virtual documents are useful in cases where the presented view will be created by merging the work of different authors; for instance, the reference example, a blog post, and its comments in one query. A blog post titled “<a href="http://www.cmlenz.net/archives/2007/10/couchdb-joins">CouchDB Joins</a>,” by Christopher Lenz, covers this in more detail.
 
-<p>This virtual document idea takes us to the other kind of document—the event log. Use this in cases where you don’t trust user input or where you need to trigger an asynchronous job. This records the user action as an event, so only minimal validation needs to occur at save time. It’s when you load the document for further work that you’d check for complex relational-style constraints.
+<p>存在一种通过视图来整理收集数据从而创造“虚拟的“文档的技术。你可以使用这个来把你的用户配置信息里每个属性
+存储在一个不同的文档里，但是我不推荐这种做法。虚拟文档在收集不同作者的工作创造一个新的文档时比较游泳；
+比如说，这里有个引用的例子：一篇博客以及它的评论。博客的标题是"<a href="http://www.cmlenz.net/archives/2007/10/couchdb-joins">CouchDB Joins</a>,” ，作者是 Christopher Lenz，点击链接查看详细内容。
 
-<p>You can treat documents as state machines, with a combination of user input and background processing managing document state. You’d use a view by state to pull out the relevant document—changing its state would move it in the view.
+<p>这个虚拟文档的主意向我们引入了另外一种文档——活动日志。当你不信任用户输入或者你需要触发一个异步任务时可以使用这个。
+这会把用户的行为记录成一个活动，所以会最小化验证时间。It’s when you load the document for further work that you’d check for complex relational-style constraints.
+
+<p>你可以把文档当成一个状态机，把用户的输入和后台的文档处理状态结合在一起。You’d use a view by state to pull out the relevant document—changing its state would move it in the view.
 
 <p>This approach is also useful for logging—combined with the <code>batch=ok</code> performance hint, CouchDB should make a fine log store, and reduce views are ideal for finding things like average response time or highly active users.
 
-<h3 id="server">The Query Server</h3>
+<h3 id="server">查询服务器</h3>
 
-<p>CouchDB’s default query server (the software package that executes design document functions) is written in JavaScript, but there are views servers available for nearly any language you can imagine. Implementing a new language is a matter of handling a few JSON commands from a simple line-based program.
+<p>CouchDB 默认的查询服务器(执行文档函数的软件)是用 JavaScript 写的，但是你也可以使用几乎所有你能想到的任何语言。
+实现一门新的语言只需要提供一个基于行的能处理一些 JSON 命令的程序。
 
-<p>In this section, we’ll review existing functionality like MapReduce views, update validation functions, and show and list transforms. We’ll also briefly describe capabilities available on CouchDB’s roadmap, like replication filters, update handlers for parsing non-JSON input, and a rewrite handler for making application URLs more palatable. Since CouchDB is an open source project, we can’t really say when each planned feature will become available, but it’s our hope that everything described here is available by the time you read this. We’ll make it clear in the text when we’re talking about things that aren’t yet in the CouchDB trunk.
+<p>在这一节中，我们会回顾已经存在的函数，比如 MapReduce 视图，更新验证函数，以及展示和列表转换函数。
+我们也会简要地描述一下 CouchDB 的发展路线，比如去重过滤器，更新解析非 JSON 输入的处理器，
+和一个重写的让应用 URL 更友好的处理器。因为 CouchDB 是一个开源项目，我们不能保证这些计划的特性都会实现，
+但是我们希望是这样的。当我们讨论一些还不在 CouchDB 主分支中的东西的时候我会详细解释的。
 
-<h3 id="documents">Applications Are Documents</h3>
+<h3 id="documents">应用即文档</h3>
 
-<p>CouchDB is designed to work best when there is a one-to-one correspondence between applications and design documents.
+<p>CouchDB 被设计成在应用与设计文档一一对应的情况下工作得最好。
 
-<p>A <em>design document</em> is a CouchDB document with an <code>id</code> that begins with <code>_design/</code>. For instance, the example blog application, Sofa, is stored in a design document with the ID <code>_design/sofa</code> (see <a href="#figure/1">Figure 1, “Anatomy of our design document”</a>). Design documents are just like any other CouchDB document—they replicate along with the other documents in their database and track edit conflicts with the <code>rev</code> parameter.
+<p>一个 <em>设计文档</em>是一个<code>id</code>以<code>_design/</code>开头的 CouchDB 文档。
+举个例子，示例应用 Sofa 被存储在一个设计文档中，ID 是<code>_design/sofa</code> (看 <a href="#figure/1">图 1, “设计文档剖析”</a>)。
+设计文档和其他 CouchDB 文档一样——在数据库中和其他文档一起被复制，也是依靠<code>rev</code>参数来追踪冲突。
 
-<p>As we’ve seen, design documents are normal JSON documents, denoted by the fact that their DocID is prefixed with <code>_design/</code>.
+<p>正如我们看到的，设计文档就是普通的 JSON 文档，区别是他们的 DocID 的前缀是<code>_design</code>
 
-<p>CouchDB looks for views and other application functions here. The static HTML pages of our application are served as attachments to the design document. Views and validations, however, aren’t stored as attachments; rather, they are directly included in the design document’s JSON body.
+<p>CouchDB 在这里寻找视图和其他的应用函数。我们的应用的静态 HTML 页是作为设计文档的附件提供的。
+然后视图和验证函数并不是，它们不是作为附件存储，而是直接存储在设计文档的 JSON 主体中。
 
 <div class="figure" id="figure/1">
 
 <img src="design/01.png">
 
-<p class="caption">Figure 1. Anatomy of our design document
+<p class="caption">图 1. 设计文档剖析
 
 </div>
 
-<p>CouchDB’s MapReduce queries are stored in the <code>views</code> field. This is how Futon displays and allows you to edit MapReduce queries. View indexes are stored on a per–design document basis, according to a fingerprint of the function’s text contents. This means that if you edit attachments, validations, or any other non-view (or language) fields on the design document, the views will not be regenerated. However, if you change a map or a reduce function, the view index will be deleted and a new index built for the new view functions.
+<p>CouchDB 的 MapReduce 查询存储在<code>views</code>字段中。这正是 Futon 所展示的，并且可以让你编辑。
+视图索引存储在一个预先设计的文档基础里，根据函数的文字内容的指纹命名。这意味着如果你编辑了附件，验证函数，或者其他设计
+文档的非视图(或语言)的字段，视图将不会重新生成，然后，如果你修改了一个 map 或者 reduce 函数，视图索引将会被删掉然后
+重建一个新的视图索引。
 
-<p>CouchDB has the capability to render responses in formats other than raw JSON. The design doc fields <code>show</code> and <code>list</code> contain functions used to transform raw JSON into HTML, XML, or other Content-Types. This allows CouchDB to serve Atom feeds without any additional middleware. The <code>show</code> and <code>list</code> functions are a little like “actions” in traditional web frameworks—they run some code based on a request and render a response. However, they differ from actions in that they may not have side effects. This means that they are largely restricted to handling <code>GET</code> requests, but it also means they can be cached by HTTP proxies like Varnish.
+<p>CouchDB 可以把回复渲染成出了原始 JSON 格式之外的其他格式。
+设计文档的 <code>show</code>字段和<code>list</code>字段包含了用来把原始 JSON 转换成 HTML，XML 或者其他的内容格式的函数。
+这使得 CouchDB 不需要任何额外的中间件就可以提供 Atom feeds。<code>show</code>和<code>list</code>函数就传统
+web 框架里的 "actions"——它们可以在一个请求上运行一些代码然后返回渲染后的内容。当然这和 actions 还是有区别的，
+这些视图函数可能不会有副作用。这意味着它们很大程度上限制于只能处理<code>GET</code>请求，
+但也意味这可以被像 Varnish 这样的 HTTP 代理缓存。
 
-<p>Because application logic is contained in a single document, code upgrades can be accomplished with CouchDB replication. This also opens the possibility for a single database to host multiple applications. The interface a newspaper editor needs is vastly different from what a reader desires, although the data is largely the same. They can both be hosted by the same database, in different design documents.
+<p>因为应用逻辑包含在一个单独的文档里面，代码更新可以通过 CouchDB 的复制完成。
+这也使得一个单独的数据库服务多个应用具备了可能性。一个新闻报纸的编辑需要的接口依赖于读者的需求可能是多种多张的，
+但是数据大部分都是同一个数据。它们可以使用同一个数据库，但是使用不同的设计文档。
 
-<p>A CouchDB database can contain many design documents. Example design DocIDs are:
+<p>一个 CouchDB 数据可能包含许多设计文档。比如:
 
 <pre>
 _design/calendar
@@ -67,7 +94,7 @@ _design/blog
 _design/admin
 </pre>
 
-<p>In the full CouchDB URL structure, you’d be able to <code>GET</code> the design document JSON at URLs like:
+<p>在完整的 CouchDB URL 结构中，你可以使用<code>GET</code>来请求设计文档发的 JSON，比如这样的 URL：
 
 <pre>
 http://localhost:5984/mydb/_design/calendar
@@ -76,23 +103,41 @@ http://127.0.0.1:5984/mydb/_design/blog
 http://127.0.0.1:5984/mydb/_design/admin
 </pre>
 
-<p>We show this to note that design documents have a special case, as they are the only documents whose URLs can be used with a literal slash. We’ve done this because nobody likes to see <code>%2F</code> in their browser’s location bar. In all other cases, a slash in a DocID must be escaped when used in a URL. For instance, the DocID <code>movies/jaws</code> would appear in the URL like this: <code>http://127.0.0.1:5984/mydb/movies%2Fjaws</code>.
+<p>我们举这些例子是因为需要注意的是设计文档有一个特例，设计文档是唯一可以在URL中使用斜线的文档。
+我们这么做是因为谁也不想在他们的浏览器地址栏里看见<code>%2F</code>这样的东西。
+在其他情况下，DocID 中的斜线在 URL 中必须被转义。比如 DocID 是<code>movies/jaws</code>在 URL 里会变成这样:<code>http://127.0.0.1:5984/mydb/movies%2Fjaws</code>。
 
-<p>We’ll build the first iteration of the example application without using <code>show</code> or <code>list</code>, because writing Ajax queries against the JSON API is a better way to teach CouchDB as a database. The APIs we explore in the first iteration are the same APIs you’d use to analyze log data, archive assets, or manage persistent queues.
+<p>我们示例应用的第一个迭代版本将不会使用<code>show</code>或者<code>list</code>函数，
+因为写 Ajax 请求 JSON API 是一个更好把 CouchDB 当成数据库使用的教学例子。
+第一个迭代版本中使用的 API 和你将用来分析日志数据，归档资源或者管理持久化队列的 API 一样。
 
-<p>In the second iteration, we’ll upgrade our example blog so that it can function with client-side JavaScript turned off. For now, sticking to Ajax queries gives more transparency into how CouchDB’s JSON/HTTP API works. JSON is a subset of JavaScript, so working with it in JavaScript keeps the impedance mismatch low, while the browser’s <em>XMLHttpRequest (XHR)</em> object handles the HTTP details for us.
+<p>在第二次迭代的版本中，我们将会升级我们的示例博客，so that it can function with client-side JavaScript turned off。
+现在来说，坚持使用 Ajax 查询使得 CouchDB 的 JSON/HTTP API 是如何工作的更透明。
+JSON 是 JavaScript 的一个子集，所以使用 JavaScript 可以最小化 JSON 在语言层面的不匹配问题。
+同时浏览器的<em>XMLHttpRequest</em>对象为我们处理 HTTP 细节。
 
-<p>CouchDB uses the <code>validate_doc_update</code> function to prevent invalid or unauthorized document updates from proceeding. We use it in the example application to ensure that blog posts can be authored only by logged-in users. CouchDB’s validation functions also can’t have any side effects, and they have the opportunity to block not only end user document saves, but also replicated documents from other nodes. We’ll talk about validation in depth in <a href="index.html#part/iii">Part III, “Example Application”</a>.
+<p>CouchDB 使用<code>validate_doc_update</code>函数来防止非法的或者未授权的文档更新。
+我们使用它来保证我们的示例博客只有登陆用户才能发表文章。
+CouchDB 的验证函数也不可能没有副作用，它们有可能会堵塞不仅仅是终端用户的文档保存，还可能会堵塞其他节点的复制文档。
+我们将会在<a href="index.html#part/iii">第三部分, “示例应用”</a>深入讨论文档验证。
 
-<p>The raw images, JavaScript, CSS, and HTML assets needed by Sofa are stored in the <code>_attachments</code> field, which is interesting in that by default it shows only the stubs, rather than the full content of the files. Attachments are available on all CouchDB documents, not just design documents, so asset management applications have as much flexibility as they could need. If a set of resources is required for your application to run, they should be attached to the design document. This means that a new user can easily bootstrap your application on an empty database.
+<p>Sofa 需要的原始图片，JavaScript, CSS，和 HTML 资源文件存储在<code>_attachments</code>字段，
+它的一个有趣的地方是它默认只显示 stubs，而不是文件的完整内容。
+在所有的 CouchDB 文档中都是有附件的，不仅仅是设计文档，所以资源管理应用也有同样灵活的文档。
+这意味着新用户只需要一个空的数据库便可以启动你的应用了。
 
-<p>The other fields in the design document shown in <a href="#figure/1">Figure 1, “Anatomy of our design document”</a> (and in the design documents we’ll be using) are used by CouchApp’s upload process (see <a href="standalone.html">Chapter 10, Standalone Applications</a> for more information on CouchApp). The <code>signatures</code> field allows us to avoid updating attachments that have not changed between the disk and the database. It does this by comparing file content hashes. The <code>lib</code> field is used to hold additional JavaScript code and JSON data to be inserted at deploy time into view, show, and validation functions. We’ll explain CouchApp in the next chapter.
+<p>设计文档的其他在<a href="#figure/1">图 1, “设计文档剖析”</a>(以及在我们将使用的设计文档中)中展示的字段将会被我们的
+CouchApp 的上传进程所使用(有关 CouchApp
+的更多信息请看<a href="standalone.html">第 10 章, 独立应用</a>)。<code>signatures</code>字段让我们避免了重复上传没有在磁盘或者数据中改变的附件。
+它通过比较文件内容的哈希值来实现这个。<code>lib</code>字段用来保存额外的 JavaScript 代码和 JSON 数据，
+这些数据是在部署时我们会传递给视图，show 以及验证函数。我们会在下一章中解释 CouchApp。
 
-<h3 id="basic">A Basic Design Document</h3>
+<h3 id="basic">一个基础的设计文档</h3>
 
-<p>In the next section we’ll get into advanced techniques for working with design documents, but before we finish here, let’s look at a very basic design document. All we’ll do is define a single view, but it should be enough to show you how design documents fit into the larger system.
+<p>在接下来的一节中我们会进入到设计文档的高级技术中，但是在我们结束前，先看一个非常基础的设计文档的吧。
+我们所做的便是定义一个单独的视图，但这个并不够来展示设计文档是如何适应更大的系统的。
 
-<p>First, add the following text (or something like it) to a text file called <code>mydesign.json</code> using your editor:
+<p>首先，使用你的编辑器把下边的文本(或者其他类似它的东西)保存到一个叫<code>mydesign.json</code>的文本文件中。
 
 <pre>
 {
@@ -105,39 +150,56 @@ http://127.0.0.1:5984/mydb/_design/admin
 }
 </pre>
 
-<p>Now use <code>curl</code> to <code>PUT</code> the file to CouchDB (we’ll create a database first for good measure):
+<p>现在使用<code>curl</code>来把文件<code>PUT</code>到 CouchDB(先创建一个数据库):
 
 <pre>
 curl -X PUT http://127.0.0.1:5984/basic
 curl -X PUT http://127.0.0.1:5984/basic/_design/example --data-binary @mydesign.json
 </pre>
 
-<p>From the second request, you should see a response like:
+<p>在第二个请求中，我们应该会看到如下的回复：
 
 <pre>
 {"ok":true,"id":"_design/example","rev":"1-230141dfa7e07c3dbfef0789bf11773a"}
 </pre>
 
-<p>Now we can query the view we’ve defined, but before we do that, we should add a few documents to the database so we have something to view. Running the following command a few times will add empty documents:
+<p>现在我们可以查询我们定义的视图了，但在这之前，我们应该先添加一些文档到数据库里面。
+运行几次下面的命令将会添加一些空文档：
 
 <pre>
 curl -X POST http://127.0.0.1:5984/basic -d '{}'
 </pre>
 
-<p>Now to query the view:
+<p>现在来查询视图：
 
 <pre>
 curl http://127.0.0.1:5984/basic/_design/example/_view/foo
 </pre>
 
-<p>This should give you a list of all the documents in the database (except the design document). You’ve created and used your first design document!
+<p>这应该会返回你数据库中所有的文档列表(除了设计文档)。
+你已经创建并使用了你的第一个设计文档！
 
-<h3 id="future">Looking to the Future</h3>
+<h3 id="future">着眼于未来</h3>
 
-<p>There are other design document functions that are being introduced at the time of this writing, including <code>_update</code> and <code>_filter</code> that we aren’t covering in depth here. Filter functions are covered in <a href="notifications.html">Chapter 20, Change Notifications</a>. Imagine a web service that <code>POSTs</code> an XML blob at a URL of your choosing when particular events occur. PayPal’s instant payment notification is one of these. With an <code>_update</code> handler, you can <code>POST</code> these directly in CouchDB and it can parse the XML into a JSON document and save it. The same goes for CSV, multi-part form, or any other format.
+<p>在写这个时候，已经有一些其他的设计文档函数被引入了，包括我们这里并没有深入了解的<code>_update</code>和<code>_filter</code>。
+Filter 函数在<a href="notifications.html">第 20 章, 变更通知</a>中有介绍。 
+想象有一个 web 服务，当特定的事件发生的时候它就<code>POST</code>一个 XML 二进制对象到你指定的 URL。
+PayPal 的即时支付通知便是这种类型。
+With an <code>_update</code> handler, you can <code>POST</code> these directly in CouchDB and it can parse the XML into a JSON document and save it. The same goes for CSV, multi-part form, or any other format.
+通过<code>_update</code>处理器，你可以直接<code>POST</code>这些到 CouchDB，
+然后它就会把 XML 解析成 JSON 文档并保存。CSV，multi-part form, 或者其他任何格式同样如此。
 
-<p>The bigger picture we’re working on is like an app server, but different in one crucial regard: rather than let the developer do whatever he wants (loop a list of DocIDs and make queries, make queries based on the results of other queries, etc.), we’re defining “safe” transformations, such as view, show, list, and update. By safe, we mean that they have well-known performance characteristics and otherwise fit into CouchDB’s architecture in a streamlined way.
+<p>The bigger picture we're working on is like an app server，但是注意有很重要的一点不同：
+不是让开发者能够做任何他想做的事(遍历一个 DocID 列表然后查询，然后在查询结果上又做一次另外的查询)，
+我们定义了一种"安全"的变换，比如说视图，show，list 和 update。
+我们说的安全是指公认的性能特征或者要不就是符合 CouchDB 架构的流线型方式。
 
-<p>The goal here is to provide a way to build standalone apps that can also be easily indexed by search engines and used via screen readers. Hence, the push for plain old HTML. You can pretty much rely on JavaScript getting executed (except when you can’t). Having HTML resources means CouchDB is suitable for public-facing web apps.
+<p>这里的目标是提供一种构建独立应用的方式，使得它能容易地被搜索引擎索引并且被屏幕前的读者使用。
+因此，推动普通的 HTML。
+你可以极大地依赖你的 JavaScript 被执行(除了不能执行时)。
+拥有 HTML 资源意味着 CouchDB 适合开发面向大多数人的 web 应用。
 
-<p>On the horizon are a rewrite handler and a database event handler, as they seem to flesh out the application capabilities nicely. A rewrite handler would allow your application to present its own URL space, which would make integration into existing systems a bit easier. An event handler would allow you to run asynchronous processes when the database changes, so that, for instance, a document update can trigger a workflow, multi-document validation, or message queue.
+<p>在水平方向上看 CouchDB 是一个重写处理器以及一个数据库事件处理器，因为它们看起来很好地充实了应用的能力。
+一个重写处理器允许你的应用使用它自己的 URL 空间，使得集成到已经存在的系统中更简单。
+一个事件处理器允许你在数据库发生改变时运行异步的处理进程，然后呢，比如一个文档更新可以触发一个工作流程，
+多文档验证或者消息队列。
